@@ -46,4 +46,4 @@ Telegram  PostgreSQL Audit Log
 4. Configure your n8n environment variables and Telegram Bot credentials.
 
 ---
-*Built by Emeka | Open to AI Automation & DevOps opportunities in the UK, Canada, and Australia.*
+*Built by Emeka | Open to AI Automation & DevOps remote opportunities*
