@@ -1,0 +1,199 @@
+{
+  "name": "Github daily digest",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 18
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        0,
+        720
+      ],
+      "id": "81bc2d6c-f085-4f03-9a46-0633a32d2fcb",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n    repository_full_name,\n    COALESCE(category, event_type) as activity_type,\n    priority,\n    ai_summary\nFROM github_events\nWHERE processed_at >= NOW() - INTERVAL '24 hours'\n  AND repository_full_name IS NOT NULL\nORDER BY \n    CASE priority \n        WHEN 'high' THEN 1 \n        WHEN 'medium' THEN 2 \n        WHEN 'low' THEN 3 \n        ELSE 4 \n    END,\n    processed_at DESC;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        224,
+        720
+      ],
+      "id": "055e4835-4838-4388-8e91-0272308944c0",
+      "name": "Execute a SQL query",
+      "credentials": {
+        "postgres": {
+          "id": "PXTTiPIE9gEVRtdD",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nlet summaryText = \"Here is the GitHub activity from the last 24 hours:\\n\\n\";\nlet count = 0;\n\nitems.forEach(item => {\n  // Filter out the ping/null glitch so the AI doesn't get confused\n  if (!item.json.repository_full_name || item.json.repository_full_name === 'null') {\n    return;\n  }\n\n  const repo = item.json.repository_full_name;\n  \n  // FIX: Look for activity_type first, then event_type\n  const event = item.json.activity_type || item.json.event_type || 'Unknown Event';\n  \n  const priority = item.json.priority || 'unclassified';\n  const summary = item.json.ai_summary || 'No AI summary available.';\n\n  summaryText += `- **[${priority.toUpperCase()}]** ${repo} (${event}): ${summary}\\n`;\n  count++;\n});\n\nif (count === 0) {\n  summaryText = \"No valid activity recorded in the last 24 hours.\";\n}\n\nreturn [{ json: { daily_activity_text: summaryText } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        720
+      ],
+      "id": "77ea8939-6046-4496-81df-560a408d5722",
+      "name": "Aggregate Events for AI"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.daily_activity_text }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "   You are a helpful DevOps assistant. Your job is to summarize GitHub activity into a clean, concise daily report for a developer. Group the events logically if possible. Keep it under 150 words. Use emojis to make it readable."
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        672,
+        720
+      ],
+      "id": "561561d6-5838-4f76-99b3-73a208c241b5",
+      "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        704,
+        896
+      ],
+      "id": "05528020-05a4-44e6-b9b9-0ba104ad3e28",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "rl0QK26YKZtQwrPw",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "1237294954",
+        "text": "=   {{ $json.text }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "Markdown"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1040,
+        720
+      ],
+      "id": "c0949a42-f635-4bd2-ad05-44085b8e4828",
+      "name": "Send a text message",
+      "webhookId": "81be967d-464a-414b-a68e-c0571ba99bf5",
+      "credentials": {
+        "telegramApi": {
+          "id": "rb2ta5oYXQ5dNhYF",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Events for AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Events for AI": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "xfgU9UQGrhntzq69",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "4be3ce37-33c0-4349-a2ca-f9f5a8c5e7dd",
+  "meta": {
+    "instanceId": "613752f9f5bcc8d0d69c5c9684104a99bc35fc95d1a27ec818460a963aeed3c8"
+  },
+  "nodeGroups": [],
+  "id": "VWbWvHdvOuApV01I",
+  "tags": []
+}

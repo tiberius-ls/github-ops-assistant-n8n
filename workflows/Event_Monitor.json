@@ -1,0 +1,847 @@
+{
+  "name": "Github Operations Assistant - Event Monitor",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "github-events",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -16,
+        688
+      ],
+      "id": "1b4fb221-a503-4d84-845c-f4e8a8613962",
+      "name": "Webhook",
+      "webhookId": "9e73fa9d-128f-4c64-aba0-7cb3f24049ba"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $json.body ?? $json;\nconst headers = $json.headers ?? {};\n\nconst githubEvent =\n  headers['x-github-event'] ??\n  headers['X-GitHub-Event'] ??\n  'unknown';\n\nconst deliveryId =\n  headers['x-github-delivery'] ??\n  headers['X-GitHub-Delivery'] ??\n  null;\n\nconst repository = body.repository ?? {};\nconst sender = body.sender ?? {};\n\nconst issue = body.issue ?? null;\nconst pullRequest = body.pull_request ?? null;\nconst review = body.review ?? null;\nconst comment = body.comment ?? null;\nconst release = body.release ?? null;\n\nconst normalized = {\n  github_event: githubEvent,\n  action: body.action ?? null,\n  delivery_id: deliveryId,\n\n  repository: {\n    id: repository.id ?? null,\n    name: repository.name ?? null,\n    full_name: repository.full_name ?? null,\n    private: repository.private ?? null,\n    url: repository.html_url ?? null\n  },\n\n  sender: {\n    id: sender.id ?? null,\n    login: sender.login ?? null\n  },\n\n  issue: issue\n    ? {\n        number: issue.number ?? null,\n        title: issue.title ?? null,\n        state: issue.state ?? null,\n        url: issue.html_url ?? null,\n        author: issue.user?.login ?? null\n      }\n    : null,\n\n  pull_request: pullRequest\n    ? {\n        number: pullRequest.number ?? null,\n        title: pullRequest.title ?? null,\n        state: pullRequest.state ?? null,\n        merged: pullRequest.merged ?? false,\n        url: pullRequest.html_url ?? null,\n        author: pullRequest.user?.login ?? null\n      }\n    : null,\n\n  review: review\n    ? {\n        id: review.id ?? null,\n        state: review.state ?? null,\n        author: review.user?.login ?? null\n      }\n    : null,\n\n  comment: comment\n    ? {\n        id: comment.id ?? null,\n        body: comment.body ?? null,\n        author: comment.user?.login ?? null,\n        url: comment.html_url ?? null\n      }\n    : null,\n\n  release: release\n    ? {\n        id: release.id ?? null,\n        tag_name: release.tag_name ?? null,\n        name: release.name ?? null,\n        url: release.html_url ?? null\n      }\n    : null,\n\n  received_at: new Date().toISOString()\n};\n\nreturn [\n  {\n    json: normalized\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        544,
+        672
+      ],
+      "id": "76ef3ab4-8ab8-4a8a-a898-23c098ee75b8",
+      "name": "Normalize GitHub Event"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.github_event }}",
+                    "rightValue": "issues",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "256291ce-4577-4bb8-b293-dac5e3239886"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "9eebd600-2268-411e-851f-3609d9c13aca",
+                    "leftValue": "={{ $json.github_event }}",
+                    "rightValue": "issue_comment",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "37aa1cdd-627b-434f-a369-0e970d63e983",
+                    "leftValue": "={{ $json.github_event }}",
+                    "rightValue": "pull_request",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "bc3aecab-819e-4ded-9032-13f20d566323",
+                    "leftValue": "={{ $json.github_event }}",
+                    "rightValue": "pul_request_review",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "c361f4cb-a75a-4e40-8893-6079e4064a7d",
+                    "leftValue": "={{ $json.github_event }}",
+                    "rightValue": "push",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "d1a74223-cf72-4fc1-aaf8-fa6d957726bc",
+                    "leftValue": "={{ $json.github_event }}",
+                    "rightValue": "release",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "5e702c0e-f6ce-4e4d-80d4-f69583e2f109",
+                    "leftValue": "={{ $json.github_event }}",
+                    "rightValue": "workflow run",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        1376,
+        576
+      ],
+      "id": "d6b83715-7781-4c41-9520-71b8cf07f156",
+      "name": "Event Router"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "CREATE TABLE IF NOT EXISTS github_events (\n    id BIGSERIAL PRIMARY KEY,\n    delivery_id TEXT UNIQUE NOT NULL,\n    event_type TEXT NOT NULL,\n    repository_full_name TEXT,\n    sender_login TEXT,\n    received_at TIMESTAMPTZ DEFAULT NOW()\n);",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        1488,
+        1552
+      ],
+      "id": "ec4fd1b9-8e5e-42b5-af3c-03249981f26e",
+      "name": "Execute a SQL query",
+      "credentials": {
+        "postgres": {
+          "id": "PXTTiPIE9gEVRtdD",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH inserted AS (\n    INSERT INTO github_events (\n        delivery_id,\n        event_type,\n        repository_full_name,\n        received_at\n    )\n    VALUES (\n        '{{ $json.delivery_id }}',\n        '{{ $json.github_event || \"unknown\" }}',\n        '{{ $json.repository.full_name }}',\n        '{{ $json.received_at || $now.toISO() }}'\n    )\n    ON CONFLICT (delivery_id) DO NOTHING\n    RETURNING delivery_id\n)\nSELECT\n    '{{ $json.delivery_id }}' AS delivery_id,\n    EXISTS (\n        SELECT 1 FROM inserted\n    ) AS is_new;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        768,
+        672
+      ],
+      "id": "c0c5a0ed-128d-4aa7-adb5-99ef0ecc5e1b",
+      "name": "Check Github Delivery",
+      "credentials": {
+        "postgres": {
+          "id": "PXTTiPIE9gEVRtdD",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "5b9a32ec-09b2-4236-8644-42ee15fd5525",
+              "leftValue": "={{ $json.is_new }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        960,
+        672
+      ],
+      "id": "1b1add80-43ba-423b-a4de-f0d02433fb0d",
+      "name": "Check if New event"
+    },
+    {
+      "parameters": {
+        "jsCode": "const event = $('Normalize GitHub Event').item.json;\n\nreturn [\n  {\n    json: {\n      ...event,\n      is_new: true\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1168,
+        656
+      ],
+      "id": "8758be0e-d21d-4a79-920f-ce954a0f4e87",
+      "name": "Restore Event Data"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        1616,
+        0
+      ],
+      "id": "055d6142-d103-4c59-b844-03772b054eee",
+      "name": "When chat message received",
+      "webhookId": "8974db25-168b-43f0-ac2a-f314a88ebe2a"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Classify this GitHub event.\n\n{{ JSON.stringify($json.ai_input) }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "You are a GitHub activity classification assistant.\n\nYour job is to classify and summarize ONLY the GitHub event provided to you.\n\nGitHub event data is the ONLY source of truth.\n\nNever:\n- invent facts\n- infer facts that are not present\n- claim that an action occurred unless explicitly present\n- create URLs\n- create issue or PR numbers\n- invent usernames\n- invent repository information\n- invent deadlines\n- invent urgency\n\nYou may classify the event based only on the supplied data.\n\nReturn ONLY valid JSON.\n\nRequired fields:\n\n{\n  \"priority\": \"high | medium | low | informational\",\n  \"action_required\": true,\n  \"category\": \"pull_request | issue | review | comment | release | push | other\",\n  \"summary\": \"string\",\n  \"reason\": \"string\",\n  \"notification\": true\n}\n\nRules:\n\nhigh:\nThe event explicitly requires the user's action, such as a review request or assignment.\n\nmedium:\nThe event may require attention but does not explicitly require immediate action.\n\nlow:\nUseful activity that is not currently actionable.\n\ninformational:\nActivity that normally does not require action.\n\nIf the event does not contain enough information to determine whether action is required, set:\n\n\"action_required\": false\n\nand explain the limitation in \"reason\"."
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        1824,
+        656
+      ],
+      "id": "65962e65-d867-495e-b232-422e4d7b5d38",
+      "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "model": "=openai/gpt-oss-120b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        1824,
+        880
+      ],
+      "id": "1a79d4a5-fe68-4aa6-92b0-5103e85c1d83",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "rl0QK26YKZtQwrPw",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const aiResponse = $json.text;\n\nconst originalData = $('Prepare AI Output').item.json;\n\nconst event = originalData.ai_input;\n\nlet parsed;\nconst errors = [];\n\ntry {\n  parsed = JSON.parse(aiResponse);\n} catch (error) {\n  return {\n    json: {\n      validation_status: \"failed\",\n      validation_passed: false,\n      errors: [\"AI output is not valid JSON\"],\n      ai_output_raw: aiResponse,\n      source_event: event,\n      human_review_required: true\n    }\n  };\n}\n\nconst allowedPriorities = [\n  \"high\",\n  \"medium\",\n  \"low\",\n  \"informational\"\n];\n\nconst allowedCategories = [\n  \"pull_request\",\n  \"issue\",\n  \"review\",\n  \"comment\",\n  \"release\",\n  \"push\",\n  \"other\"\n];\n\nif (!allowedPriorities.includes(parsed.priority)) {\n  errors.push(\"Invalid priority\");\n}\n\nif (typeof parsed.action_required !== \"boolean\") {\n  errors.push(\"action_required must be a boolean\");\n}\n\nif (!allowedCategories.includes(parsed.category)) {\n  errors.push(\"Invalid category\");\n}\n\nif (typeof parsed.summary !== \"string\" || !parsed.summary.trim()) {\n  errors.push(\"summary must be a non-empty string\");\n}\n\nif (typeof parsed.reason !== \"string\" || !parsed.reason.trim()) {\n  errors.push(\"reason must be a non-empty string\");\n}\n\nif (typeof parsed.notification !== \"boolean\") {\n  errors.push(\"notification must be a boolean\");\n}\n\n// Deterministic consistency checks against the GitHub event.\nif (event.github_event === \"issue_comment\") {\n  if (parsed.category !== \"comment\") {\n    errors.push(\"Category contradicts the GitHub event type\");\n  }\n\n  if (\n    event.action === \"deleted\" &&\n    !/delet(ed|ion)|remov(ed|al)/i.test(parsed.summary)\n  ) {\n    errors.push(\"Summary does not reflect the deleted comment event\");\n  }\n}\n\n// Informational events should not trigger immediate notifications.\n\n\nreturn {\n  json: {\n    validation_status: errors.length === 0 ? \"passed\" : \"failed\",\n    validation_passed: errors.length === 0,\n    errors,\n    ai_output: parsed,\n    source_event: event,\n    human_review_required: true\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2160,
+        496
+      ],
+      "id": "7de9a299-fe91-4fb8-9c79-a58eb3b7d86d",
+      "name": "Validate AI Output"
+    },
+    {
+      "parameters": {
+        "jsCode": "const event = $json;\n\nconst aiInput = {\n  delivery_id: event.delivery_id ?? null,\n  github_event: event.github_event,\n  action: event.action,\n\n  repository: {\n    full_name: event.repository?.full_name ?? null\n  },\n\n  sender: {\n    login: event.sender?.login ?? null\n  },\n\n  issue: event.issue\n    ? {\n        number: event.issue.number,\n        title: event.issue.title,\n        state: event.issue.state,\n        author: event.issue.author,\n        url: event.issue.url\n      }\n    : null,\n\n  pull_request: event.pull_request\n    ? {\n        number: event.pull_request.number,\n        title: event.pull_request.title,\n        state: event.pull_request.state,\n        merged: event.pull_request.merged,\n        author: event.pull_request.author,\n        url: event.pull_request.url\n      }\n    : null,\n\n  review: event.review\n    ? {\n        id: event.review.id,\n        state: event.review.state,\n        author: event.review.author\n      }\n    : null,\n\n  comment: event.comment\n    ? {\n        id: event.comment.id,\n        body: event.comment.body,\n        author: event.comment.author,\n        url: event.comment.url\n      }\n    : null,\n\n  release: event.release\n    ? {\n        id: event.release.id,\n        tag_name: event.release.tag_name,\n        name: event.release.name,\n        url: event.release.url\n      }\n    : null\n};\n\nreturn [\n  {\n    json: {\n      ai_input: aiInput,\n      source: \"github\",\n      source_of_truth: \"github_payload\"\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1648,
+        656
+      ],
+      "id": "18562d86-40df-4096-8eb0-c05afbcb0446",
+      "name": "Prepare AI Output"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "c87d9f82-16bb-4b13-ab38-70ef7b1dc9da",
+              "leftValue": "={{ $json.validation_passed }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2400,
+        496
+      ],
+      "id": "acd56269-815a-43a2-a5ed-f9a54fb0ec95",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const result = $json;\n\nreturn {\n  json: {\n    logged_at: new Date().toISOString(),\n    status: \"rejected\",\n    validation_status: result.validation_status,\n    errors: result.errors ?? [],\n    repository: result.source_event?.repository?.full_name ?? null,\n    event_type: result.source_event?.github_event ?? null,\n    action: result.source_event?.action ?? null,\n    delivery_id: result.source_event?.delivery_id ?? null,\n    ai_output: result.ai_output ?? null,\n    human_review_required: true\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2592,
+        720
+      ],
+      "id": "efa8b6cd-7e66-4863-970c-434aeb9ae895",
+      "name": "Log Validation Failure"
+    },
+    {
+      "parameters": {
+        "chatId": "1237294954",
+        "text": "=<b>🔔 GitHub Notification</b>\n\n<b>📁 Repository:</b> {{ $json.repository }}\n\n<b>🏷️ Event:</b> {{ $json.event_type }}\n\n<b>💬 Summary:</b> {{ $json.summary }}\n\n<b>🔗 Link:</b> <a href=\"{{ $json.source_url }}\">Open in GitHub</a>",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        3360,
+        336
+      ],
+      "id": "9dbae59f-8cdc-452b-b550-b89c092c080f",
+      "name": "Send a text message",
+      "webhookId": "c501a1c7-87ab-40de-906b-e9606f347916",
+      "credentials": {
+        "telegramApi": {
+          "id": "rb2ta5oYXQ5dNhYF",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "\nINSERT INTO github_ai_rejections (\n    delivery_id,\n    repository_full_name,\n    event_type,\n    action,\n    validation_errors,\n    ai_output,\n    human_review_required,\n    logged_at\n)\nVALUES (\n    $1,\n    $2,\n    $3,\n    $4,\n    $5::jsonb,\n    $6::jsonb,\n    $7,\n    $8::timestamptz\n)\nON CONFLICT (delivery_id) DO NOTHING\nRETURNING id, delivery_id;\n",
+        "options": {
+          "queryReplacement": "= {{   [     $json.delivery_id,     $json.repository,     $json.event_type,     $json.action,     JSON.stringify($json.errors ?? []),     JSON.stringify($json.ai_output ?? {}),     $json.human_review_required,     $json.logged_at   ] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        2800,
+        720
+      ],
+      "id": "3f0f275b-8190-4dd3-b735-dbb3ab722f64",
+      "name": "Save AI Rejection to PostgreSQL",
+      "credentials": {
+        "postgres": {
+          "id": "PXTTiPIE9gEVRtdD",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const result = $json;\n\nif (result.validation_passed !== true) {\n  throw new Error(\"Blocked: AI output has not passed validation.\");\n}\n\nconst event = result.source_event;\nconst ai = result.ai_output;\n\nif (!event || !ai) {\n  throw new Error(\"Missing validated event or AI output.\");\n}\n\nreturn {\n  json: {\n    delivery_id: event.delivery_id,\n    repository: event.repository?.full_name ?? null,\n    event_type: event.github_event,\n    action: event.action,\n    priority: ai.priority,\n    action_required: ai.action_required,\n    category: ai.category,\n    summary: ai.summary,\n    reason: ai.reason,\n    notification: ai.notification,\n    human_review_required: true,\n    source_url:\n      event.issue?.url ??\n      event.pull_request?.url ??\n      event.comment?.url ??\n      event.repository?.url ??\n      null\n  }\n};\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2608,
+        336
+      ],
+      "id": "ce252280-811e-42a7-b67f-22733fd5a582",
+      "name": "Prepare Validated Event"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.notification }}",
+                    "rightValue": "true",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "92f64ec7-98a6-40ce-9910-1e26c2d4ea3a"
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        2784,
+        -48
+      ],
+      "id": "437cb13d-a137-449b-bb6f-f66cf2281658",
+      "name": "Notification Router"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE github_events\nSET \n    priority = $1,\n    category = $2,\n    action_required = $3,\n    ai_summary = $4,\n    ai_reason = $5,\n    notification = $6,\n    source_url = $7,\n    processed_at = NOW()\nWHERE delivery_id = $8;",
+        "options": {
+          "queryReplacement": "={{ [\n  $json.priority,\n  $json.category,\n  $json.action_required,\n  $json.summary,\n  $json.reason,\n  $json.notification,\n  $json.source_url,\n  $json.delivery_id\n] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        2832,
+        336
+      ],
+      "id": "c3ba98df-b5a8-4469-93b2-bd1a7038b9fc",
+      "name": "Update Event with AI Data",
+      "credentials": {
+        "postgres": {
+          "id": "PXTTiPIE9gEVRtdD",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Pull data directly from the node that formatted it perfectly\nconst validatedEvent = $node[\"Prepare Validated Event\"].json;\n\nreturn [{\n  json: {\n    repository: validatedEvent.repository || 'Unknown Repo',\n    event_type: validatedEvent.event_type || 'Unknown Event',\n    summary: validatedEvent.summary || 'No summary available',\n    source_url: validatedEvent.source_url || 'https://github.com'\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3056,
+        336
+      ],
+      "id": "52c68db7-5589-4200-a754-ba54fbac7c43",
+      "name": "Format for Telegram"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "850c6ebe-5103-4178-806b-782d33e065b3",
+              "leftValue": "={{ $json.headers['x-github-event'] }}",
+              "rightValue": "ping",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [
+        240,
+        688
+      ],
+      "id": "64824958-79d6-4bc0-b2ae-81bd5f62469f",
+      "name": "If1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize GitHub Event": {
+      "main": [
+        [
+          {
+            "node": "Check Github Delivery",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Event Router": {
+      "main": [
+        [
+          {
+            "node": "Prepare AI Output",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare AI Output",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare AI Output",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare AI Output",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare AI Output",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare AI Output",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare AI Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Github Delivery": {
+      "main": [
+        [
+          {
+            "node": "Check if New event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check if New event": {
+      "main": [
+        [
+          {
+            "node": "Restore Event Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Restore Event Data": {
+      "main": [
+        [
+          {
+            "node": "Event Router",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Validate AI Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare AI Output": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate AI Output": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Prepare Validated Event",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Validation Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Validation Failure": {
+      "main": [
+        [
+          {
+            "node": "Save AI Rejection to PostgreSQL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Validated Event": {
+      "main": [
+        [
+          {
+            "node": "Update Event with AI Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notification Router": {
+      "main": [
+        []
+      ]
+    },
+    "Update Event with AI Data": {
+      "main": [
+        [
+          {
+            "node": "Format for Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format for Telegram": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Normalize GitHub Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "xfgU9UQGrhntzq69",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "2a940dba-fb5f-4f28-aeac-4bbd924707f5",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "613752f9f5bcc8d0d69c5c9684104a99bc35fc95d1a27ec818460a963aeed3c8"
+  },
+  "nodeGroups": [],
+  "id": "FzDGjzMYzxTWehrt",
+  "tags": []
+}
